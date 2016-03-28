@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/myfind.iml" filepath="$PROJECT_DIR$/.idea/myfind.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/review-myfind.iml" filepath="$PROJECT_DIR$/.idea/review-myfind.iml" />
     </modules>
   </component>
 </project>

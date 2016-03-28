@@ -13,12 +13,16 @@
 #include <time.h>
 #include <unistd.h>
 
+/*
+ * ### FB: limits.h und time.h scheint nicht in Verwendung
+ */
+
 /**
  * a linked list containing the parsed parameters
  */
 typedef struct params_s {
-  char *location;
-  int help;
+  char *location; // ### FB: Location habe ich als Ziel-Pfad verstanden, warum in jedem param speichern?
+  int help;    // ### FB: die Int-Felder könnte man über eine ENUM abbilden.
   int print;
   int ls;
   int nouser;
@@ -29,6 +33,10 @@ typedef struct params_s {
   char *name;
   struct params_s *next;
 } params_t;
+/*
+ * ### FB: Da die Anzahl der Argumente über die gesamte Laufzeit fix ist
+ *         könnte man einen Array statt der Linked-List andenken.
+ */
 
 void do_help(void);
 int do_parse_params(int argc, char *argv[], params_t *params);
@@ -52,12 +60,17 @@ char *do_get_user(struct stat attr);
 char *do_get_group(struct stat attr);
 char *do_get_mtime(struct stat attr);
 char *do_get_symlink(char *path, struct stat attr);
+// ### FB: Schöne, sprechende Namen für die Funktionen.
 
 /**
  * a global variable containing the program name
  * used for error messages
  */
 char *program_name;
+/*
+ * ### FB: Verwendet man die error() Funktion der error.h lib spart man sich diese Global
+ *         http://www.gnu.org/software/libc/manual/html_node/Error-Messages.html
+ */
 
 /**
  * @brief entry point; calls do_parse_params and do_location
@@ -104,6 +117,11 @@ int main(int argc, char *argv[]) {
 
   return EXIT_SUCCESS;
 }
+/*
+ * ### FB: Schöne Umsetzung mittels vorgezogener Parameter-Auswertung.
+ *         Dadurch weicht das Verhalten von der Referenz-Implementation ab (bic-myfind), ist aber dafür
+ *         gegen die "normale" linux Variante testbar.
+ */
 
 /**
  * @brief prints out the program usage
@@ -145,7 +163,7 @@ int do_parse_params(int argc, char *argv[], params_t *params) {
    * 4 = unknown user
    * 5 = path after expression
    */
-  int status = 0;
+  int status = 0; // ### FB: wäre mit einem ENUM übersichtlicher gelöst
   int expression = 0;
 
   /* params can start from argv[1] */
@@ -192,7 +210,7 @@ int do_parse_params(int argc, char *argv[], params_t *params) {
           continue;
         }
         /* otherwise, if the input is a number, use that */
-        if (sscanf(params->user, "%u", &params->userid)) {
+        if (sscanf(params->user, "%u", &params->userid)) { // ### FB: guter Einsatz von sscanf
           expression = 1;
           continue;
         }
@@ -254,7 +272,7 @@ int do_parse_params(int argc, char *argv[], params_t *params) {
       break;
     } else {
       if (expression == 0) {
-        params->location = argv[i];
+        params->location = argv[i]; // ### FB: Die Location in jedem Param speichern? Verstehe ich leider nicht ganz
         continue;
       } else {
         status = 5;
@@ -262,7 +280,15 @@ int do_parse_params(int argc, char *argv[], params_t *params) {
       }
     }
   }
+  /*
+   * ### FB: Effiziente Verarbeitungsroutine. Nur ein paar allgemeine Anmerkungen:
+   *           - Wäre die Verarbeitung der speziellen Argumente in eigenen Funktionen wäre
+   *             der Code um einiges besser zu lesen.
+   *           - Viele "magic numbers". Hier würden sich Konstanten anbieten um Fehler vorzubeugen
+   *             und die Lesbarkeit zu erhöhen.
+   */
 
+  // ### FB: Error-Handling hätte ich in einer eigenen Funktion gelöst
   /* error handling */
   if (status == 1) {
     fprintf(stderr, "%s: unknown predicate: `%s'\n", program_name, argv[i]);
@@ -321,7 +347,7 @@ int do_location(params_t *params) {
   do {
     location = params->location;
 
-    if (!location) {
+    if (!location) { // ### FB: warum jedes mal gegen NULL checken wenn nur ein mal gesetzt?
       location = ".";
     }
 
@@ -365,6 +391,7 @@ int do_file(char *path, params_t *params, struct stat attr) {
   int printed = 0;
 
   do {
+    // ### FB: Mit ENUM Feld könnte hier ein switch genutzt werden und für mehr Übersicht sorgen.
     /* filtering */
     if (params->type) {
       if (do_type(params->type, attr) != EXIT_SUCCESS) {
@@ -449,7 +476,7 @@ int do_dir(char *path, params_t *params, struct stat attr) {
     /* add a trailing slash if not present */
     length = strlen(path);
     if (path[length - 1] != '/') {
-      slash = "/";
+      slash = "/"; // ### FB: sehr gute Idee!
     }
 
     /* allocate memory for the full entry path */
@@ -824,6 +851,7 @@ char *do_get_mtime(struct stat attr) {
     return "";
   }
 
+  // ### FB: Aufwendig aber sehr nettes Feature.
   if ((now - six_months) < attr.st_mtime) {
     format = "%b %e %H:%M"; /* recent */
   } else {
@@ -838,6 +866,10 @@ char *do_get_mtime(struct stat attr) {
   mtime[15] = '\0';
 
   return mtime;
+  /*
+   * ### FB: Rückgabe eines Pointers auf eine static Variable?
+   *         Kommt mir ungewöhnlich vor, aber sicher sehr performant
+   */
 }
 
 /**
@@ -862,6 +894,10 @@ char *do_get_symlink(char *path, struct stat attr) {
     if (!symlink) {
       fprintf(stderr, "%s: malloc(): %s\n", program_name, strerror(errno));
       return strdup("");
+      /*
+       * ### FB: Bei fehlgeschlagenem malloc() kann der Speicher heap voll sein.
+       *         strdup braucht meines Wissens nach auch heap-speicher => kein gutes Errorhandling
+       */
     }
 
     /*
