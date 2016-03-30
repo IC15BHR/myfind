@@ -14,14 +14,14 @@
 #include <unistd.h>
 
 /*
- * ### FB: limits.h und time.h scheint nicht in Verwendung
+ * ### FB: limits.h und time.h unter Cygwin nicht notwendig
  */
 
 /**
  * a linked list containing the parsed parameters
  */
 typedef struct params_s {
-  char *location; // ### FB: Location habe ich als Ziel-Pfad verstanden, warum in jedem param speichern?
+  char *location; // ### FB: Für mehrere Locations (wie echtes Find). Sehr schön!
   int help;    // ### FB: die Int-Felder könnte man über eine ENUM abbilden.
   int print;
   int ls;
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
 /*
  * ### FB: Schöne Umsetzung mittels vorgezogener Parameter-Auswertung.
  *         Dadurch weicht das Verhalten von der Referenz-Implementation ab (bic-myfind), ist aber dafür
- *         gegen die "normale" linux Variante testbar.
+ *         gegen die "normale" linux Variante testbar und besteht alle Tests!
  */
 
 /**
@@ -332,6 +332,10 @@ int do_free_params(params_t *params) {
 
   return EXIT_SUCCESS;
 }
+/*
+ * ### FB: Gute Idee das freigeben von Ressourcen so zusammenzufassen.
+ *         Kleine Anmerkung: Wäre mit einem Struct-Array performanter zu erledigen.
+ */
 
 /**
  * @brief calls do_file and do_directory on locations from the params struct
@@ -345,9 +349,10 @@ int do_location(params_t *params) {
   char *location;
 
   do {
+    // ### FB: bei "multi-location support" wären Kommentare gut gewesen
     location = params->location;
 
-    if (!location) { // ### FB: warum jedes mal gegen NULL checken wenn nur ein mal gesetzt?
+    if (!location) {
       location = ".";
     }
 
@@ -371,6 +376,11 @@ int do_location(params_t *params) {
   } while (params && params->location);
 
   /* GNU find returns 1 even if a single entry failed */
+  /*
+   * ### FB: ich nehme an, dass hier die errno von tieferen Calls durchgereicht wird?
+   *         wäre vielleicht übersichtlicher gewesen, wenn die Funktionen error-codes liefern würden
+   *         sollte hier die errno von lstat gemeint sein, ist das Erreichen nicht möglich
+   */
   if (errno != 0) {
     return EXIT_FAILURE;
   }
@@ -600,10 +610,15 @@ int do_type(char type, struct stat attr) {
  */
 int do_nouser(struct stat attr) {
   static unsigned int cache_uid = UINT_MAX;
+  /*
+   * ### FB: Caching ist prinzipiell eine gute Idee!
+   *         Vielleicht hätte man Ergebnisse allgemein cachen können?
+   *         LastInput == CurrentInput => LastOutput == CurrentOutput
+   */
 
   /* skip getgrgid if we have the record in cache */
   if (cache_uid == attr.st_uid) {
-    return EXIT_FAILURE;
+    return EXIT_FAILURE; // ### FB: FAILED etwas missverständlich, eigene Konstante vielleicht besser?
   }
 
   if (!getpwuid(attr.st_uid)) {
@@ -625,7 +640,7 @@ int do_nouser(struct stat attr) {
  * @returns EXIT_SUCCESS, EXIT_FAILURE
  */
 int do_user(unsigned int userid, struct stat attr) {
-
+  // ### FB: Codekonsistenz statt Zeileneffizienz. Gut!
   if (userid == attr.st_uid) {
     return EXIT_SUCCESS;
   }
@@ -642,7 +657,7 @@ int do_user(unsigned int userid, struct stat attr) {
  * @returns EXIT_SUCCESS, EXIT_FAILURE
  */
 int do_name(char *path, char *pattern) {
-  char *filename = basename(path);
+  char *filename = basename(path); // ### FB: vielleicht den Namen von lstat im struct zwischenspeichern und übergeben?
   int flags = 0;
 
   if (fnmatch(pattern, filename, flags) == 0) {
@@ -722,7 +737,7 @@ char do_get_type(struct stat attr) {
  * @returns the entry permissions as a string
  */
 char *do_get_perms(struct stat attr) {
-  static char perms[11];
+  static char perms[11]; // ### FB: static? hätte hier caching passieren sollen? Sonst fehlerfalle?
   char type = do_get_type(attr);
 
   /*
@@ -931,6 +946,10 @@ char *do_get_symlink(char *path, struct stat attr) {
   /*
    * the entry is not a symlink
    * strdup is needed to keep the output free-able
+   */
+  /*
+   * ### FB: würde ein return-code und ein buffer-pointer als rückgabe-methode
+   *         verwendet werden, könnte man die strdup()-calls weglassen.
    */
   return strdup("");
 }
