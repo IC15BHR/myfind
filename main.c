@@ -15,13 +15,13 @@
 #include <time.h>
 #include <unistd.h>
 
-/**
- * a linked list containing the parsed parameters
- */
 /*
  * ### FB: Da die Anzahl der Argumente über die gesamte Laufzeit fix ist
  *         könnte man einen Array statt der Linked-List andenken.
  *         Die Int-Felder (help, print, ls, ...) könnte man über eine ENUM abbilden.
+ */
+/**
+ * a linked list containing the parsed parameters
  */
 typedef struct params_s {
   /* ### FB: Für mehrere Locations (wie echtes Find). Sehr schön! */
@@ -62,16 +62,21 @@ char *do_get_group(struct stat attr);
 char *do_get_mtime(struct stat attr);
 char *do_get_symlink(char *path, struct stat attr);
 
-/**
- * a global variable containing the program name
- * used for error messages
- */
 /*
  * ### FB: Verwendet man die error() Funktion der error.h lib spart man sich diese Global
  *         http://www.gnu.org/software/libc/manual/html_node/Error-Messages.html
  */
+/**
+ * a global variable containing the program name
+ * used for error messages
+ */
 char *program_name;
 
+/*
+ * ### FB: Schöne Umsetzung mittels vorgezogener Parameter-Auswertung.
+ *         Dadurch weicht das Verhalten von der Referenz-Implementation ab (bic-myfind), ist aber dafür
+ *         gegen die "normale" linux Variante testbar und besteht alle Tests!
+ */
 /**
  * @brief entry point; calls do_parse_params and do_location
  *
@@ -117,11 +122,6 @@ int main(int argc, char *argv[]) {
 
   return EXIT_SUCCESS;
 }
-/*
- * ### FB: Schöne Umsetzung mittels vorgezogener Parameter-Auswertung.
- *         Dadurch weicht das Verhalten von der Referenz-Implementation ab (bic-myfind), ist aber dafür
- *         gegen die "normale" linux Variante testbar und besteht alle Tests!
- */
 
 /**
  * @brief prints out the program usage
@@ -142,6 +142,13 @@ void do_help(void) {
   }
 }
 
+/*
+ * ### FB: Effiziente Verarbeitungsroutine. Nur ein paar allgemeine Anmerkungen:
+ *           - Wäre die Verarbeitung der speziellen Argumente in eigenen Funktionen wäre
+ *             der Code um einiges besser zu lesen.
+ *           - Viele "magic numbers". Hier würden sich Konstanten anbieten um Fehler vorzubeugen
+ *             und die Lesbarkeit zu erhöhen.
+ */
 /**
  * @brief parses argv and populates the params struct
  *
@@ -150,13 +157,6 @@ void do_help(void) {
  * @param params the struct to populate
  *
  * @returns EXIT_SUCCESS, EXIT_FAILURE
- */
-/*
- * ### FB: Effiziente Verarbeitungsroutine. Nur ein paar allgemeine Anmerkungen:
- *           - Wäre die Verarbeitung der speziellen Argumente in eigenen Funktionen wäre
- *             der Code um einiges besser zu lesen.
- *           - Viele "magic numbers". Hier würden sich Konstanten anbieten um Fehler vorzubeugen
- *             und die Lesbarkeit zu erhöhen.
  */
 int do_parse_params(int argc, char *argv[], params_t *params) {
   struct passwd *pwd;
@@ -318,16 +318,16 @@ int do_parse_params(int argc, char *argv[], params_t *params) {
   return EXIT_SUCCESS;
 }
 
+/*
+ * ### FB: Gute Idee das freigeben von Ressourcen so zusammenzufassen.
+ *         Kleine Anmerkung: Wäre mit einem Struct-Array performanter zu erledigen.
+ */
 /**
  * @brief frees the params linked list
  *
  * @param params the parsed parameters
  *
  * @returns EXIT_SUCCESS
- */
-/*
- * ### FB: Gute Idee das freigeben von Ressourcen so zusammenzufassen.
- *         Kleine Anmerkung: Wäre mit einem Struct-Array performanter zu erledigen.
  */
 int do_free_params(params_t *params) {
 
