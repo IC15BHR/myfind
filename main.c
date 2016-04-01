@@ -3,6 +3,7 @@
 #include <fnmatch.h>
 #include <grp.h>
 #include <libgen.h>
+/* ### FB: Als Info: limits.h unter Cygwin nicht notwendig */
 #include <limits.h>
 #include <locale.h>
 #include <pwd.h>
@@ -10,19 +11,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+/* ### FB: Als Info: time.h unter Cygwin nicht notwendig */
 #include <time.h>
 #include <unistd.h>
-
-/*
- * ### FB: limits.h und time.h unter Cygwin nicht notwendig
- */
 
 /**
  * a linked list containing the parsed parameters
  */
+/*
+ * ### FB: Da die Anzahl der Argumente über die gesamte Laufzeit fix ist
+ *         könnte man einen Array statt der Linked-List andenken.
+ *         Die Int-Felder (help, print, ls, ...) könnte man über eine ENUM abbilden.
+ */
 typedef struct params_s {
-  char *location; // ### FB: Für mehrere Locations (wie echtes Find). Sehr schön!
-  int help;    // ### FB: die Int-Felder könnte man über eine ENUM abbilden.
+  /* ### FB: Für mehrere Locations (wie echtes Find). Sehr schön! */
+  char *location;
+  int help;
   int print;
   int ls;
   int nouser;
@@ -33,11 +37,8 @@ typedef struct params_s {
   char *name;
   struct params_s *next;
 } params_t;
-/*
- * ### FB: Da die Anzahl der Argumente über die gesamte Laufzeit fix ist
- *         könnte man einen Array statt der Linked-List andenken.
- */
 
+/* ### FB: Schöne, sprechende Namen für die Funktionen. */
 void do_help(void);
 int do_parse_params(int argc, char *argv[], params_t *params);
 int do_free_params(params_t *params);
@@ -60,17 +61,16 @@ char *do_get_user(struct stat attr);
 char *do_get_group(struct stat attr);
 char *do_get_mtime(struct stat attr);
 char *do_get_symlink(char *path, struct stat attr);
-// ### FB: Schöne, sprechende Namen für die Funktionen.
 
 /**
  * a global variable containing the program name
  * used for error messages
  */
-char *program_name;
 /*
  * ### FB: Verwendet man die error() Funktion der error.h lib spart man sich diese Global
  *         http://www.gnu.org/software/libc/manual/html_node/Error-Messages.html
  */
+char *program_name;
 
 /**
  * @brief entry point; calls do_parse_params and do_location
@@ -151,6 +151,13 @@ void do_help(void) {
  *
  * @returns EXIT_SUCCESS, EXIT_FAILURE
  */
+/*
+ * ### FB: Effiziente Verarbeitungsroutine. Nur ein paar allgemeine Anmerkungen:
+ *           - Wäre die Verarbeitung der speziellen Argumente in eigenen Funktionen wäre
+ *             der Code um einiges besser zu lesen.
+ *           - Viele "magic numbers". Hier würden sich Konstanten anbieten um Fehler vorzubeugen
+ *             und die Lesbarkeit zu erhöhen.
+ */
 int do_parse_params(int argc, char *argv[], params_t *params) {
   struct passwd *pwd;
   int i; /* used outside of the loop */
@@ -163,7 +170,8 @@ int do_parse_params(int argc, char *argv[], params_t *params) {
    * 4 = unknown user
    * 5 = path after expression
    */
-  int status = 0; // ### FB: wäre mit einem ENUM übersichtlicher gelöst
+  /* ### FB: wäre mit einem ENUM übersichtlicher gelöst */
+  int status = 0;
   int expression = 0;
 
   /* params can start from argv[1] */
@@ -210,7 +218,8 @@ int do_parse_params(int argc, char *argv[], params_t *params) {
           continue;
         }
         /* otherwise, if the input is a number, use that */
-        if (sscanf(params->user, "%u", &params->userid)) { // ### FB: guter Einsatz von sscanf
+        /* ### FB: guter Einsatz von sscanf */
+        if (sscanf(params->user, "%u", &params->userid)) {
           expression = 1;
           continue;
         }
@@ -272,7 +281,8 @@ int do_parse_params(int argc, char *argv[], params_t *params) {
       break;
     } else {
       if (expression == 0) {
-        params->location = argv[i]; // ### FB: Die Location in jedem Param speichern? Verstehe ich leider nicht ganz
+        /* ### FB: Die Location in jedem Param speichern? Verstehe ich leider nicht ganz */
+        params->location = argv[i];
         continue;
       } else {
         status = 5;
@@ -280,15 +290,8 @@ int do_parse_params(int argc, char *argv[], params_t *params) {
       }
     }
   }
-  /*
-   * ### FB: Effiziente Verarbeitungsroutine. Nur ein paar allgemeine Anmerkungen:
-   *           - Wäre die Verarbeitung der speziellen Argumente in eigenen Funktionen wäre
-   *             der Code um einiges besser zu lesen.
-   *           - Viele "magic numbers". Hier würden sich Konstanten anbieten um Fehler vorzubeugen
-   *             und die Lesbarkeit zu erhöhen.
-   */
 
-  // ### FB: Error-Handling hätte ich in einer eigenen Funktion gelöst
+  /* ### FB: Error-Handling hätte ich in einer eigenen Funktion gelöst */
   /* error handling */
   if (status == 1) {
     fprintf(stderr, "%s: unknown predicate: `%s'\n", program_name, argv[i]);
@@ -322,6 +325,10 @@ int do_parse_params(int argc, char *argv[], params_t *params) {
  *
  * @returns EXIT_SUCCESS
  */
+/*
+ * ### FB: Gute Idee das freigeben von Ressourcen so zusammenzufassen.
+ *         Kleine Anmerkung: Wäre mit einem Struct-Array performanter zu erledigen.
+ */
 int do_free_params(params_t *params) {
 
   while (params) {
@@ -332,10 +339,6 @@ int do_free_params(params_t *params) {
 
   return EXIT_SUCCESS;
 }
-/*
- * ### FB: Gute Idee das freigeben von Ressourcen so zusammenzufassen.
- *         Kleine Anmerkung: Wäre mit einem Struct-Array performanter zu erledigen.
- */
 
 /**
  * @brief calls do_file and do_directory on locations from the params struct
@@ -349,7 +352,7 @@ int do_location(params_t *params) {
   char *location;
 
   do {
-    // ### FB: bei "multi-location support" wären Kommentare gut gewesen
+    /* ### FB: bei "multi-location support" wären Kommentare gut gewesen */
     location = params->location;
 
     if (!location) {
@@ -401,7 +404,7 @@ int do_file(char *path, params_t *params, struct stat attr) {
   int printed = 0;
 
   do {
-    // ### FB: Mit ENUM Feld könnte hier ein switch genutzt werden und für mehr Übersicht sorgen.
+    /* ### FB: Mit ENUM Feld könnte hier ein switch genutzt werden und für mehr Übersicht sorgen. */
     /* filtering */
     if (params->type) {
       if (do_type(params->type, attr) != EXIT_SUCCESS) {
@@ -486,7 +489,8 @@ int do_dir(char *path, params_t *params, struct stat attr) {
     /* add a trailing slash if not present */
     length = strlen(path);
     if (path[length - 1] != '/') {
-      slash = "/"; // ### FB: sehr gute Idee!
+      /* ### FB: sehr gute Idee! */
+      slash = "/";
     }
 
     /* allocate memory for the full entry path */
@@ -560,6 +564,10 @@ int do_print(char *path) {
  * @returns EXIT_SUCCESS, EXIT_FAILURE
  */
 int do_ls(char *path, struct stat attr) {
+  /*
+   * ### FB: statt stdtypes (zB unsigned long) könnte man
+   *         die entspechenden types (zB ino_t) verwenden
+   */
   unsigned long inode = attr.st_ino;
   long long blocks = S_ISLNK(attr.st_mode) ? 0 : attr.st_blocks / 2;
   char *perms = do_get_perms(attr);
@@ -618,7 +626,8 @@ int do_nouser(struct stat attr) {
 
   /* skip getgrgid if we have the record in cache */
   if (cache_uid == attr.st_uid) {
-    return EXIT_FAILURE; // ### FB: FAILED etwas missverständlich, eigene Konstante vielleicht besser?
+    /* ### FB: FAILED etwas missverständlich, eigene Konstante vielleicht besser? */
+    return EXIT_FAILURE;
   }
 
   if (!getpwuid(attr.st_uid)) {
@@ -640,7 +649,7 @@ int do_nouser(struct stat attr) {
  * @returns EXIT_SUCCESS, EXIT_FAILURE
  */
 int do_user(unsigned int userid, struct stat attr) {
-  // ### FB: Codekonsistenz statt Zeileneffizienz. Gut!
+  /* ### FB: Codekonsistenz statt Zeileneffizienz. Gut! */
   if (userid == attr.st_uid) {
     return EXIT_SUCCESS;
   }
@@ -657,7 +666,8 @@ int do_user(unsigned int userid, struct stat attr) {
  * @returns EXIT_SUCCESS, EXIT_FAILURE
  */
 int do_name(char *path, char *pattern) {
-  char *filename = basename(path); // ### FB: vielleicht den Namen von lstat im struct zwischenspeichern und übergeben?
+  /* ### FB: vielleicht den Namen von lstat im struct zwischenspeichern und übergeben? */
+  char *filename = basename(path);
   int flags = 0;
 
   if (fnmatch(pattern, filename, flags) == 0) {
@@ -737,7 +747,8 @@ char do_get_type(struct stat attr) {
  * @returns the entry permissions as a string
  */
 char *do_get_perms(struct stat attr) {
-  static char perms[11]; // ### FB: static? hätte hier caching passieren sollen? Sonst fehlerfalle?
+  /* ### FB: static? hätte hier caching passieren sollen? Sonst fehlerfalle? */
+  static char perms[11];
   char type = do_get_type(attr);
 
   /*
@@ -833,6 +844,7 @@ char *do_get_group(struct stat attr) {
     static char group[11];
     if (snprintf(group, 11, "%u", attr.st_gid) < 0) {
       fprintf(stderr, "%s: snprintf(): %s\n", program_name, strerror(errno));
+      /* ### FB: eventuell wäre ein error-code oder ein direktes exit besser */
       return "";
     }
     return group;
@@ -866,7 +878,7 @@ char *do_get_mtime(struct stat attr) {
     return "";
   }
 
-  // ### FB: Aufwendig aber sehr nettes Feature.
+  /* ### FB: Aufwendig aber sehr nettes Feature. */
   if ((now - six_months) < attr.st_mtime) {
     format = "%b %e %H:%M"; /* recent */
   } else {
@@ -880,11 +892,11 @@ char *do_get_mtime(struct stat attr) {
 
   mtime[15] = '\0';
 
-  return mtime;
   /*
    * ### FB: Rückgabe eines Pointers auf eine static Variable?
    *         Kommt mir ungewöhnlich vor, aber sicher sehr performant
    */
+  return mtime;
 }
 
 /**
@@ -908,11 +920,11 @@ char *do_get_symlink(char *path, struct stat attr) {
 
     if (!symlink) {
       fprintf(stderr, "%s: malloc(): %s\n", program_name, strerror(errno));
-      return strdup("");
       /*
        * ### FB: Bei fehlgeschlagenem malloc() kann der Speicher heap voll sein.
        *         strdup braucht meines Wissens nach auch heap-speicher => kein gutes Errorhandling
        */
+      return strdup("");
     }
 
     /*

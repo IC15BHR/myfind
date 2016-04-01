@@ -4,16 +4,15 @@
 
 Der Code ist schlank und übersichtlich gestaltet. Er folgt allen
 notwendigen Codestyle-Rules und enthält keine unnötige Redundanz. Die
-Qualität ist durchgehend sehr gut! Das nicht nur die gefragten Features
+Qualität ist durchgehend sehr gut! Das nicht nur die gefragten Features,
 sondern alle für die Kompatibilität zur gängigen Find-Implementation
-notwenigen Funktionen implementiert wurden ist beeindruckend.
+notwenigen Funktionen implementiert wurden, ist beeindruckend.
 
 Kleine Kritikpunkte sind die teils etwas verwirrende Codeführung und
 die verwendung vieler "Magic Numbers", also Zahlen-Literale deren genauer
 Wert nicht ganz klar aus dem Kontext gelesen werden kann. Diese sind aber
-meißt kommentiert. Außerdem könnte die Verwendung von internen Return-
-Codes die Lesbarkeit weiter erhöhen. Dies ist aber Kritik auf hohem
-Niveau.
+meisst kommentiert. Außerdem könnte die Verwendung von internen Return-
+Codes die Lesbarkeit weiter erhöhen.
 
-Besonders herforzuheben ist das fehlerfreie Speichermanagement und die
+Besonders hervorzuheben ist das fehlerfreie Speichermanagement und die
 extrem gute Performance.
